@@ -19,7 +19,6 @@ from labelme import __appname__
 from labelme import PY2
 
 from . import utils
-from labelme.ai import MODELS
 from labelme.config import get_config
 from labelme.label_file import LabelFile
 from labelme.label_file import LabelFileError
@@ -320,12 +319,20 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         toggle_keep_prev_mode.setChecked(self._config["keep_prev"])
 
+        # createMode = action(
+        #     self.tr("Create Polygons"),
+        #     lambda: self.toggleDrawMode(False, createMode="polygon"),
+        #     shortcuts["create_polygon"],
+        #     "objects",
+        #     self.tr("Start drawing polygons"),
+        #     enabled=False,
+        # ) 
         createMode = action(
-            self.tr("Create Polygons"),
-            lambda: self.toggleDrawMode(False, createMode="polygon"),
+            self.tr("Create Point"),
+            lambda: self.toggleDrawMode(False, createMode="point"),
             shortcuts["create_polygon"],
             "objects",
-            self.tr("Start drawing polygons"),
+            self.tr("Start drawing points"),
             enabled=False,
         )
         createRectangleMode = action(
@@ -368,16 +375,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Start drawing linestrip. Ctrl+LeftClick ends creation."),
             enabled=False,
         )
-        createAiPolygonMode = action(
-            self.tr("Create AI-Polygon"),
-            lambda: self.toggleDrawMode(False, createMode="ai_polygon"),
-            None,
-            "objects",
-            self.tr("Start drawing ai_polygon. Ctrl+LeftClick ends creation."),
-            enabled=False,
-        )
         editMode = action(
-            self.tr("Edit Polygons"),
+            self.tr("Edit Points"),
             self.setEditMode,
             shortcuts["edit_polygon"],
             "edit",
@@ -440,7 +439,7 @@ class MainWindow(QtWidgets.QMainWindow):
             shortcuts["undo"],
             "undo",
             self.tr("Undo last add and edit of shape"),
-            enabled=False,
+            enabled=True,
         )
 
         hideAll = action(
@@ -466,14 +465,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
 
         zoom = QtWidgets.QWidgetAction(self)
-        zoomBoxLayout = QtWidgets.QVBoxLayout()
-        zoomBoxLayout.addWidget(self.zoomWidget)
-        zoomLabel = QtWidgets.QLabel("Zoom")
-        zoomLabel.setAlignment(Qt.AlignCenter)
-        zoomLabel.setFont(QtGui.QFont(None, 10))
-        zoomBoxLayout.addWidget(zoomLabel)
-        zoom.setDefaultWidget(QtWidgets.QWidget())
-        zoom.defaultWidget().setLayout(zoomBoxLayout)
+        zoom.setDefaultWidget(self.zoomWidget)
         self.zoomWidget.setWhatsThis(
             str(
                 self.tr(
@@ -583,8 +575,7 @@ class MainWindow(QtWidgets.QMainWindow):
             checkable=True,
             enabled=True,
         )
-        if self._config["canvas"]["fill_drawing"]:
-            fill_drawing.trigger()
+        fill_drawing.trigger()
 
         # Lavel list context menu.
         labelMenu = QtWidgets.QMenu()
@@ -620,7 +611,6 @@ class MainWindow(QtWidgets.QMainWindow):
             createLineMode=createLineMode,
             createPointMode=createPointMode,
             createLineStripMode=createLineStripMode,
-            createAiPolygonMode=createAiPolygonMode,
             zoom=zoom,
             zoomIn=zoomIn,
             zoomOut=zoomOut,
@@ -655,7 +645,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 createLineMode,
                 createPointMode,
                 createLineStripMode,
-                createAiPolygonMode,
                 editMode,
                 edit,
                 duplicate,
@@ -674,7 +663,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 createLineMode,
                 createPointMode,
                 createLineStripMode,
-                createAiPolygonMode,
                 editMode,
                 brightnessContrast,
             ),
@@ -749,27 +737,8 @@ class MainWindow(QtWidgets.QMainWindow):
             ),
         )
 
-        selectAiModel = QtWidgets.QWidgetAction(self)
-        selectAiModel.setDefaultWidget(QtWidgets.QWidget())
-        selectAiModel.defaultWidget().setLayout(QtWidgets.QVBoxLayout())
-        self._selectAiModelComboBox = QtWidgets.QComboBox()
-        selectAiModel.defaultWidget().layout().addWidget(
-            self._selectAiModelComboBox
-        )
-        self._selectAiModelComboBox.addItems([model.name for model in MODELS])
-        self._selectAiModelComboBox.setCurrentIndex(1)
-        self._selectAiModelComboBox.setEnabled(False)
-        self._selectAiModelComboBox.currentIndexChanged.connect(
-            lambda: self.canvas.initializeAiModel(
-                name=self._selectAiModelComboBox.currentText()
-            )
-        )
-        selectAiModelLabel = QtWidgets.QLabel(self.tr("AI Model"))
-        selectAiModelLabel.setAlignment(QtCore.Qt.AlignCenter)
-        selectAiModelLabel.setFont(QtGui.QFont(None, 10))
-        selectAiModel.defaultWidget().layout().addWidget(selectAiModelLabel)
-
         self.tools = self.toolbar("Tools")
+        # Menu buttons on Left
         self.actions.tool = (
             open_,
             opendir,
@@ -789,8 +758,6 @@ class MainWindow(QtWidgets.QMainWindow):
             None,
             zoom,
             fitWidth,
-            None,
-            selectAiModel,
         )
 
         self.statusBar().showMessage(str(self.tr("%s started.")) % __appname__)
@@ -871,7 +838,7 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         if actions:
             utils.addActions(toolbar, actions)
-        self.addToolBar(Qt.TopToolBarArea, toolbar)
+        self.addToolBar(Qt.LeftToolBarArea, toolbar)
         return toolbar
 
     # Support Functions
@@ -893,14 +860,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actions.createLineMode,
             self.actions.createPointMode,
             self.actions.createLineStripMode,
-            self.actions.createAiPolygonMode,
             self.actions.editMode,
         )
         utils.addActions(self.menus.edit, actions + self.actions.editMenu)
 
     def setDirty(self):
         # Even if we autosave the file, we keep the ability to undo
-        self.actions.undo.setEnabled(self.canvas.isShapeRestorable)
+        # self.canvas.isShapeRestorable = True
+        self.actions.undo.setEnabled(True)
 
         if self._config["auto_save"] or self.actions.saveAuto.isChecked():
             label_file = osp.splitext(self.imagePath)[0] + ".json"
@@ -925,7 +892,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.createLineMode.setEnabled(True)
         self.actions.createPointMode.setEnabled(True)
         self.actions.createLineStripMode.setEnabled(True)
-        self.actions.createAiPolygonMode.setEnabled(True)
         title = __appname__
         if self.filename is not None:
             title = "{} - {}".format(title, self.filename)
@@ -974,10 +940,27 @@ class MainWindow(QtWidgets.QMainWindow):
     # Callbacks
 
     def undoShapeEdit(self):
-        self.canvas.restoreShape()
-        self.labelList.clear()
-        self.loadShapes(self.canvas.shapes)
-        self.actions.undo.setEnabled(self.canvas.isShapeRestorable)
+        if len(self.canvas.shapes) > 0:
+            self.canvas.shapes.pop()
+            self.labelList.clear()
+            self.loadShapes(self.canvas.shapes)
+            if len(self.canvas.shapes) > 0:
+                self.canvas.group_id = self.canvas.shapes[-1].group_id
+
+        self.just_undo = True
+
+
+        # text = shape.label
+        # print(text)
+        # label_list_item = LabelListWidgetItem(text, shape)
+        # self.labelList.removeItem(label_list_item)
+        # # print(len(self.canvas.shapes))
+        # self.canvas.restoreShape()
+        # # print(len(self.labelList))
+        
+        # # print('a', len(self.labelList))
+        
+        # self.actions.undo.setEnabled(self.canvas.isShapeRestorable)
 
     def tutorial(self):
         url = "https://github.com/wkentaro/labelme/tree/main/examples/tutorial"  # NOQA
@@ -1003,8 +986,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actions.createLineMode.setEnabled(True)
             self.actions.createPointMode.setEnabled(True)
             self.actions.createLineStripMode.setEnabled(True)
-            self.actions.createAiPolygonMode.setEnabled(True)
-            self._selectAiModelComboBox.setEnabled(False)
         else:
             if createMode == "polygon":
                 self.actions.createMode.setEnabled(False)
@@ -1013,8 +994,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.actions.createLineMode.setEnabled(True)
                 self.actions.createPointMode.setEnabled(True)
                 self.actions.createLineStripMode.setEnabled(True)
-                self.actions.createAiPolygonMode.setEnabled(True)
-                self._selectAiModelComboBox.setEnabled(False)
             elif createMode == "rectangle":
                 self.actions.createMode.setEnabled(True)
                 self.actions.createRectangleMode.setEnabled(False)
@@ -1022,8 +1001,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.actions.createLineMode.setEnabled(True)
                 self.actions.createPointMode.setEnabled(True)
                 self.actions.createLineStripMode.setEnabled(True)
-                self.actions.createAiPolygonMode.setEnabled(True)
-                self._selectAiModelComboBox.setEnabled(False)
             elif createMode == "line":
                 self.actions.createMode.setEnabled(True)
                 self.actions.createRectangleMode.setEnabled(True)
@@ -1031,8 +1008,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.actions.createLineMode.setEnabled(False)
                 self.actions.createPointMode.setEnabled(True)
                 self.actions.createLineStripMode.setEnabled(True)
-                self.actions.createAiPolygonMode.setEnabled(True)
-                self._selectAiModelComboBox.setEnabled(False)
             elif createMode == "point":
                 self.actions.createMode.setEnabled(True)
                 self.actions.createRectangleMode.setEnabled(True)
@@ -1040,8 +1015,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.actions.createLineMode.setEnabled(True)
                 self.actions.createPointMode.setEnabled(False)
                 self.actions.createLineStripMode.setEnabled(True)
-                self.actions.createAiPolygonMode.setEnabled(True)
-                self._selectAiModelComboBox.setEnabled(False)
             elif createMode == "circle":
                 self.actions.createMode.setEnabled(True)
                 self.actions.createRectangleMode.setEnabled(True)
@@ -1049,8 +1022,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.actions.createLineMode.setEnabled(True)
                 self.actions.createPointMode.setEnabled(True)
                 self.actions.createLineStripMode.setEnabled(True)
-                self.actions.createAiPolygonMode.setEnabled(True)
-                self._selectAiModelComboBox.setEnabled(False)
             elif createMode == "linestrip":
                 self.actions.createMode.setEnabled(True)
                 self.actions.createRectangleMode.setEnabled(True)
@@ -1058,20 +1029,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.actions.createLineMode.setEnabled(True)
                 self.actions.createPointMode.setEnabled(True)
                 self.actions.createLineStripMode.setEnabled(False)
-                self.actions.createAiPolygonMode.setEnabled(True)
-                self._selectAiModelComboBox.setEnabled(False)
-            elif createMode == "ai_polygon":
-                self.actions.createMode.setEnabled(True)
-                self.actions.createRectangleMode.setEnabled(True)
-                self.actions.createCircleMode.setEnabled(True)
-                self.actions.createLineMode.setEnabled(True)
-                self.actions.createPointMode.setEnabled(True)
-                self.actions.createLineStripMode.setEnabled(True)
-                self.actions.createAiPolygonMode.setEnabled(False)
-                self.canvas.initializeAiModel(
-                    name=self._selectAiModelComboBox.currentText()
-                )
-                self._selectAiModelComboBox.setEnabled(True)
             else:
                 raise ValueError("Unsupported createMode: %s" % createMode)
         self.actions.editMode.setEnabled(not edit)
@@ -1412,27 +1369,52 @@ class MainWindow(QtWidgets.QMainWindow):
 
         position MUST be in global coordinates.
         """
-        items = self.uniqLabelList.selectedItems()
-        text = None
-        if items:
-            text = items[0].data(Qt.UserRole)
-        flags = {}
-        group_id = None
-        description = ""
-        if self._config["display_label_popup"] or not text:
-            previous_text = self.labelDialog.edit.text()
-            text, flags, group_id, description = self.labelDialog.popUp(text)
-            if not text:
-                self.labelDialog.edit.setText(previous_text)
 
-        if text and not self.validateLabel(text):
-            self.errorMessage(
-                self.tr("Invalid label"),
-                self.tr("Invalid label '{}' with validation type '{}'").format(
-                    text, self._config["validate_label"]
-                ),
-            )
-            text = ""
+
+
+        flags = {}
+        group_id = self.canvas.group_id
+
+        description = ""
+        if self.canvas.createMode == 'point':  
+            if not self.canvas.ctrl_press:
+                if self.canvas.mouse == 'left':
+                    text = self._config['mouse']['left_mouse']
+                elif self.canvas.mouse == 'right':
+                    text = self._config['mouse']['right_mouse']
+                elif self.canvas.mouse == 'middle':
+                    text = self._config['mouse']['middle_mouse']
+                self.canvas.mouse = ''
+            else:
+                if self.canvas.mouse == 'left':
+                    text = self._config['mouse']['ctrl_left_mouse']
+                elif self.canvas.mouse == 'right':
+                    text = self._config['mouse']['ctrl_right_mouse']
+                elif self.canvas.mouse == 'middle':
+                    text = self._config['mouse']['ctrl_middle_mouse']
+                self.canvas.mouse = ''                
+
+            # return
+        # items = self.uniqLabelList.selectedItems()
+        # text = None
+        # if items:
+        #     text = items[0].data(Qt.UserRole)
+
+        # if self._config["display_label_popup"] or not text:
+        #     previous_text = self.labelDialog.edit.text()
+        #     text, flags, group_id, description = self.labelDialog.popUp(text)
+        #     print("group: ", group_id)
+        #     if not text:
+        #         self.labelDialog.edit.setText(previous_text)
+
+        # if text and not self.validateLabel(text):
+        #     self.errorMessage(
+        #         self.tr("Invalid label"),
+        #         self.tr("Invalid label '{}' with validation type '{}'").format(
+        #             text, self._config["validate_label"]
+        #         ),
+        #     )
+        #     text = ""
         if text:
             self.labelList.clearSelection()
             shape = self.canvas.setLastLabel(text, flags)
@@ -1440,9 +1422,10 @@ class MainWindow(QtWidgets.QMainWindow):
             shape.description = description
             self.addLabel(shape)
             self.actions.editMode.setEnabled(True)
-            self.actions.undoLastPoint.setEnabled(False)
-            self.actions.undo.setEnabled(True)
+            self.actions.undoLastPoint.setEnabled(True)
+            self.actions.undo.setEnabled(False)
             self.setDirty()
+
         else:
             self.canvas.undoLastLine()
             self.canvas.shapesBackups.pop()

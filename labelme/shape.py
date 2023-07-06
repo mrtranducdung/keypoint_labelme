@@ -57,11 +57,6 @@ class Shape(object):
         self.label = label
         self.group_id = group_id
         self.points = []
-        self.point_labels = []
-        self.shape_type = shape_type
-        self._shape_raw = None
-        self._points_raw = []
-        self._shape_type_raw = None
         self.fill = False
         self.selected = False
         self.shape_type = shape_type
@@ -84,17 +79,7 @@ class Shape(object):
             # is used for drawing the pending line a different color.
             self.line_color = line_color
 
-    def setShapeRefined(self, points, point_labels, shape_type):
-        self._shape_raw = (self.points, self.point_labels, self.shape_type)
-        self.points = points
-        self.point_labels = point_labels
         self.shape_type = shape_type
-
-    def restoreShapeRaw(self):
-        if self._shape_raw is None:
-            return
-        self.points, self.point_labels, self.shape_type = self._shape_raw
-        self._shape_raw = None
 
     @property
     def shape_type(self):
@@ -111,7 +96,6 @@ class Shape(object):
             "line",
             "circle",
             "linestrip",
-            "points",
         ]:
             raise ValueError("Unexpected shape_type: {}".format(value))
         self._shape_type = value
@@ -119,26 +103,22 @@ class Shape(object):
     def close(self):
         self._closed = True
 
-    def addPoint(self, point, label=1):
+    def addPoint(self, point):
         if self.points and point == self.points[0]:
             self.close()
         else:
             self.points.append(point)
-            self.point_labels.append(label)
 
     def canAddPoint(self):
         return self.shape_type in ["polygon", "linestrip"]
 
-    def popPoint(self):
+    def ePoint(self):
         if self.points:
-            if self.point_labels:
-                self.point_labels.pop()
             return self.points.pop()
         return None
 
-    def insertPoint(self, i, point, label=1):
+    def insertPoint(self, i, point):
         self.points.insert(i, point)
-        self.point_labels.insert(i, label)
 
     def removePoint(self, i):
         if not self.canAddPoint():
@@ -165,7 +145,6 @@ class Shape(object):
             return
 
         self.points.pop(i)
-        self.point_labels.pop(i)
 
     def isClosed(self):
         return self._closed
@@ -178,19 +157,20 @@ class Shape(object):
         x2, y2 = pt2.x(), pt2.y()
         return QtCore.QRectF(x1, y1, x2 - x1, y2 - y1)
 
-    def paint(self, painter):
+    def paint(self, painter, point_id, draw_Slot = False):
         if self.points:
             color = (
                 self.select_line_color if self.selected else self.line_color
             )
             pen = QtGui.QPen(color)
             # Try using integer sizes for smoother drawing(?)
-            pen.setWidth(max(1, int(round(2.0 / self.scale))))
+            pen.setWidth(max(2, int(round(2.0 / self.scale))))
             painter.setPen(pen)
 
             line_path = QtGui.QPainterPath()
             vrtx_path = QtGui.QPainterPath()
-            negative_vrtx_path = QtGui.QPainterPath()
+            vrtx_path_big = QtGui.QPainterPath()
+            vrtx_path_text = QtGui.QPainterPath()
 
             if self.shape_type == "rectangle":
                 assert len(self.points) in [1, 2]
@@ -211,15 +191,6 @@ class Shape(object):
                 for i, p in enumerate(self.points):
                     line_path.lineTo(p)
                     self.drawVertex(vrtx_path, i)
-            elif self.shape_type == "points":
-                assert len(self.points) == len(self.point_labels)
-                for i, (p, l) in enumerate(
-                    zip(self.points, self.point_labels)
-                ):
-                    if l == 1:
-                        self.drawVertex(vrtx_path, i)
-                    else:
-                        self.drawVertex(negative_vrtx_path, i)
             else:
                 line_path.moveTo(self.points[0])
                 # Uncommenting the following line will draw 2 paths
@@ -229,13 +200,20 @@ class Shape(object):
 
                 for i, p in enumerate(self.points):
                     line_path.lineTo(p)
-                    self.drawVertex(vrtx_path, i)
+                    self.drawVertex(vrtx_path, i, point_id)
+                    # self.drawVertex(vrtx_path_big, i, point_id, 'big')
+                    self.drawVertex(vrtx_path_text, i, point_id, 'text')
                 if self.isClosed():
                     line_path.lineTo(self.points[0])
 
             painter.drawPath(line_path)
             painter.drawPath(vrtx_path)
+            # painter.drawPath(vrtx_path_big)
             painter.fillPath(vrtx_path, self._vertex_fill_color)
+            if not draw_Slot:
+                pen.setWidth(0.5)
+                painter.setPen(pen)
+                painter.drawPath(vrtx_path_text)
             if self.fill:
                 color = (
                     self.select_fill_color
@@ -244,12 +222,7 @@ class Shape(object):
                 )
                 painter.fillPath(line_path, color)
 
-            pen.setColor(QtGui.QColor(255, 0, 0, 255))
-            painter.setPen(pen)
-            painter.drawPath(negative_vrtx_path)
-            painter.fillPath(negative_vrtx_path, QtGui.QColor(255, 0, 0, 255))
-
-    def drawVertex(self, path, i):
+    def drawVertex(self, path, i, point_id, linesize = 'small'):
         d = self.point_size / self.scale
         shape = self.point_type
         point = self.points[i]
@@ -263,7 +236,13 @@ class Shape(object):
         if shape == self.P_SQUARE:
             path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
         elif shape == self.P_ROUND:
-            path.addEllipse(point, d / 2.0, d / 2.0)
+            if linesize == 'big':
+                path.addEllipse(point, (d / 2.0) + 5, (d / 2.0) + 5)
+            elif linesize == 'small':
+               path.addEllipse(point, d / 4.0, d / 4.0)
+            elif linesize == 'text':
+                path.addText(point.x() - d / 2, point.y() - d / 2 - 3, QtGui.QFont("Arial", 25), str(point_id))
+
         else:
             assert False, "unsupported vertex shape"
 
