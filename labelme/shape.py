@@ -63,6 +63,8 @@ class Shape(object):
         self.flags = flags
         self.description = description
         self.other_data = {}
+        self.ratio = [140/1620, 140/1280]        
+        self.im_size = None
 
         self._highlightIndex = None
         self._highlightMode = self.NEAR_VERTEX
@@ -157,14 +159,15 @@ class Shape(object):
         x2, y2 = pt2.x(), pt2.y()
         return QtCore.QRectF(x1, y1, x2 - x1, y2 - y1)
 
-    def paint(self, painter, point_id, draw_Slot = False):
+    def paint(self, painter, point_id, draw_Slot = False, show_text = True):
         if self.points:
             color = (
                 self.select_line_color if self.selected else self.line_color
             )
             pen = QtGui.QPen(color)
             # Try using integer sizes for smoother drawing(?)
-            pen.setWidth(max(2, int(round(2.0 / self.scale))))
+            # pen.setWidth(max(2, int(round(2.0 / self.scale))))
+            pen.setWidth(2)
             painter.setPen(pen)
 
             line_path = QtGui.QPainterPath()
@@ -180,12 +183,19 @@ class Shape(object):
                 for i in range(len(self.points)):
                     self.drawVertex(vrtx_path, i)
             elif self.shape_type == "circle":
-                assert len(self.points) in [1, 2]
-                if len(self.points) == 2:
-                    rectangle = self.getCircleRectFromLine(self.points)
-                    line_path.addEllipse(rectangle)
-                for i in range(len(self.points)):
-                    self.drawVertex(vrtx_path, i)
+                center_x,center_y = int(self.points[0].x()), int(self.points[0].y())               
+                radius = self.ratio[0]*self.im_size.width()
+                pen = QtGui.QPen(QtGui.QColor(255, 0, 255, 200))
+                pen.setWidth(1)
+                painter.setPen(pen)
+                painter.drawEllipse(int(center_x -radius), int(center_y - radius), int(2*radius), int(2*radius))
+                self._vertex_fill_color = self.vertex_fill_color
+                # assert len(self.points) in [1, 2]
+                # if len(self.points) == 2:
+                #     rectangle = self.getCircleRectFromLine(self.points)
+                #     line_path.addEllipse(rectangle)
+                # for i in range(len(self.points)):
+                #     self.drawVertex(vrtx_path, i)
             elif self.shape_type == "linestrip":
                 line_path.moveTo(self.points[0])
                 for i, p in enumerate(self.points):
@@ -210,8 +220,8 @@ class Shape(object):
             painter.drawPath(vrtx_path)
             # painter.drawPath(vrtx_path_big)
             painter.fillPath(vrtx_path, self._vertex_fill_color)
-            if not draw_Slot:
-                pen.setWidth(0.5)
+            if (not draw_Slot) and show_text:
+                pen.setWidth(1)
                 painter.setPen(pen)
                 painter.drawPath(vrtx_path_text)
             if self.fill:

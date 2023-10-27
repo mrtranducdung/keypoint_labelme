@@ -16,6 +16,7 @@ from .shape import masks_to_bboxes
 from .shape import polygons_to_mask
 from .shape import shape_to_mask
 from .shape import shapes_to_label
+from .reformat_labelme import check_label
 
 from .qt import newIcon
 from .qt import newButton

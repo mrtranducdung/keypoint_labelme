@@ -84,8 +84,24 @@ if __name__ == '__main__':
 
     video_root = '/mnt/media01/D00050-00099/D00050_矢崎EC_次期型デジタルタコグラフ＆ドライブレコーダー/03_顧客データ/2022-11-11_矢崎ES_歩行者映像'
     des_root = '/mnt/media01/D00050-00099/D00050_矢崎EC_次期型デジタルタコグラフ＆ドライブレコーダー/04_学習データ/Car_Bike_Ped_TSR/Dungtd/auto_annotation_pes_vid'
-    main(video_root, des_root)
+    # main(video_root, des_root)
 
+    root_dir = '/home/trd2yh/Downloads/training_data'
+    des_root_dir = 'extracted_images'
+    video_name = 'VIDEO_REAR.webm'
+    folder_list = os.listdir(root_dir)
+    video_files = []
+    for folder in folder_list:
+        video_path = os.path.join(os.path.join(root_dir, folder), video_name)
+        des_im_dir = os.path.join(des_root_dir, folder)
+
+        if not os.path.exists(des_im_dir):
+            os.makedirs(des_im_dir)
+        video_files.append((video_path,des_im_dir))
+
+    with Pool(20) as p:
+        p.map(extract_one_video, video_files)
+        # extract_one_video([video_path, des_im_dir])
 
 
     # video = '/mnt/media01/D00050-00099/D00050_矢崎EC_次期型デジタルタコグラフ＆ドライブレコーダー/03_顧客データ/2022-11-24_信号機用新カメラ実車走行映像/YDX8_20221028_中/WIN_20221028_16_18_30_Pro.mp4'

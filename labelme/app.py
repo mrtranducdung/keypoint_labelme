@@ -15,6 +15,7 @@ from qtpy.QtCore import Qt
 from qtpy import QtGui
 from qtpy import QtWidgets
 
+
 from labelme import __appname__
 from labelme import PY2
 
@@ -67,7 +68,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if config is None:
             config = get_config()
         self._config = config
-
         # set default shape colors
         Shape.line_color = QtGui.QColor(*self._config["shape"]["line_color"])
         Shape.fill_color = QtGui.QColor(*self._config["shape"]["fill_color"])
@@ -218,6 +218,14 @@ class MainWindow(QtWidgets.QMainWindow):
             shortcuts["quit"],
             "quit",
             self.tr("Quit application"),
+        )
+        show_text = action(
+            self.tr("&show_text"),
+            self.show_text,
+            shortcuts["show_text"],
+            "show_text",
+            self.tr("show_text"),
+            enabled=True
         )
         open_ = action(
             self.tr("&Open"),
@@ -622,6 +630,7 @@ class MainWindow(QtWidgets.QMainWindow):
             zoomActions=zoomActions,
             openNextImg=openNextImg,
             openPrevImg=openPrevImg,
+            show_text = show_text,
             fileMenuActions=(open_, opendir, save, saveAs, close, quit),
             tool=(),
             # XXX: need to add some actions here to activate the shortcut
@@ -636,6 +645,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 removePoint,
                 None,
                 toggle_keep_prev_mode,
+                show_text
             ),
             # menu shown at right click
             menu=(
@@ -697,6 +707,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 deleteFile,
                 None,
                 quit,
+                show_text
             ),
         )
         utils.addActions(self.menus.help, (help,))
@@ -869,7 +880,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.canvas.isShapeRestorable = True
         self.actions.undo.setEnabled(True)
 
-        if self._config["auto_save"] or self.actions.saveAuto.isChecked():
+        if self._config["auto_save"] or self.actions.saveAuto.isChecked():            
             label_file = osp.splitext(self.imagePath)[0] + ".json"
             if self.output_dir:
                 label_file_without_path = osp.basename(label_file)
@@ -946,8 +957,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.loadShapes(self.canvas.shapes)
             if len(self.canvas.shapes) > 0:
                 self.canvas.group_id = self.canvas.shapes[-1].group_id
-
+            self.setDirty()
         self.just_undo = True
+        # print(len(self.canvas.shapes))
 
 
         # text = shape.label
@@ -1287,9 +1299,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
             )
             return data
-
         shapes = [format_shape(item.shape()) for item in self.labelList]
         flags = {}
+        
         for i in range(self.flag_widget.count()):
             item = self.flag_widget.item(i)
             key = item.text()
@@ -1374,25 +1386,37 @@ class MainWindow(QtWidgets.QMainWindow):
 
         flags = {}
         group_id = self.canvas.group_id
+        text = None
 
         description = ""
         if self.canvas.createMode == 'point':  
-            if not self.canvas.ctrl_press:
-                if self.canvas.mouse == 'left':
-                    text = self._config['mouse']['left_mouse']
-                elif self.canvas.mouse == 'right':
-                    text = self._config['mouse']['right_mouse']
-                elif self.canvas.mouse == 'middle':
-                    text = self._config['mouse']['middle_mouse']
-                self.canvas.mouse = ''
-            else:
+            if self.canvas.ctrl_press:
                 if self.canvas.mouse == 'left':
                     text = self._config['mouse']['ctrl_left_mouse']
                 elif self.canvas.mouse == 'right':
                     text = self._config['mouse']['ctrl_right_mouse']
                 elif self.canvas.mouse == 'middle':
                     text = self._config['mouse']['ctrl_middle_mouse']
-                self.canvas.mouse = ''                
+                self.canvas.mouse = ''   
+            elif self.canvas.shift_press:
+                if self.canvas.mouse == 'left':
+                    text = self._config['mouse']['shift_left_mouse']
+                elif self.canvas.mouse == 'right':
+                    text = self._config['mouse']['shift_right_mouse']                     
+                self.canvas.mouse = '' 
+            elif self.canvas.alt_press:
+                if self.canvas.mouse == 'left':
+                    text = self._config['mouse']['alt_left_mouse']
+                elif self.canvas.mouse == 'right':
+                    text = self._config['mouse']['alt_right_mouse']               
+            else:
+                if self.canvas.mouse == 'left':
+                    text = self._config['mouse']['left_mouse']
+                elif self.canvas.mouse == 'right':
+                    text = self._config['mouse']['right_mouse']
+                elif self.canvas.mouse == 'middle':
+                    text = self._config['mouse']['middle_mouse']
+                self.canvas.mouse = ''                 
 
             # return
         # items = self.uniqLabelList.selectedItems()
@@ -1425,10 +1449,16 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actions.undoLastPoint.setEnabled(True)
             self.actions.undo.setEnabled(False)
             self.setDirty()
-
         else:
-            self.canvas.undoLastLine()
-            self.canvas.shapesBackups.pop()
+            self.canvas.shapes.pop()
+
+
+        # else:
+            
+        #     self.canvas.undoLastLine()
+        #     if len(self.canvas.shapesBackups) > 0:
+        #         self.canvas.shapesBackups.pop()
+        # print(self.canvas.shapesBackups)
 
     def scrollRequest(self, delta, orientation):
         units = -delta * 0.1  # natural scroll
@@ -1595,6 +1625,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.status(self.tr("Error reading %s") % filename)
             return False
         self.image = image
+
+        self.canvas.im_size = self.image.size()
         self.filename = filename
         if self._config["keep_prev"]:
             prev_shapes = self.canvas.shapes
@@ -1613,10 +1645,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.setEnabled(True)
         # set zoom values
         is_initial_load = not self.zoom_values
-        if self.filename in self.zoom_values:
-            self.zoomMode = self.zoom_values[self.filename][0]
-            self.setZoom(self.zoom_values[self.filename][1])
-        elif is_initial_load or not self._config["keep_prev_scale"]:
+        # print(self.zoom_values)
+        # if self.filename in self.zoom_values:
+        #     self.zoomMode = self.zoom_values[self.filename][0]
+        #     self.setZoom(self.zoom_values[self.filename][1])
+        if is_initial_load or not self._config["keep_prev_scale"]:
             self.adjustScale(initial=True)
         # set scroll values
         for orientation in self.scroll_values:
@@ -1736,6 +1769,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.loadFile(filename)
 
     def openPrevImg(self, _value=False):
+        previous_shape = self.canvas.shapes
         keep_prev = self._config["keep_prev"]
         if QtWidgets.QApplication.keyboardModifiers() == (
             Qt.ControlModifier | Qt.ShiftModifier
@@ -1758,8 +1792,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.loadFile(filename)
 
         self._config["keep_prev"] = keep_prev
+        self.warning_label(previous_shape)
 
-    def openNextImg(self, _value=False, load=True):
+    def openNextImg(self, _value=False, check_label = True, load=True):
+        previous_shape = self.canvas.shapes
         keep_prev = self._config["keep_prev"]
         if QtWidgets.QApplication.keyboardModifiers() == (
             Qt.ControlModifier | Qt.ShiftModifier
@@ -1787,7 +1823,23 @@ class MainWindow(QtWidgets.QMainWindow):
             self.loadFile(self.filename)
 
         self._config["keep_prev"] = keep_prev
+        if check_label:
+            self.warning_label(previous_shape)
+    
+    def warning_label(self,previous_shape):
+        check = utils.reformat_labelme.check_label(previous_shape)
+        if not check:
+            message = QtWidgets.QMessageBox()
+            message.setText("Previous label may wrong, come back and check")
+            message.exec_()
 
+
+    def show_text(self):
+        if self.canvas.show_text_value == False:
+            self.canvas.show_text_value = True
+        else:
+            self.canvas.show_text_value = False
+        self.canvas.update()
     def openFile(self, _value=False):
         if not self.mayContinue():
             return
@@ -2088,7 +2140,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actions.openNextImg.setEnabled(True)
             self.actions.openPrevImg.setEnabled(True)
 
-        self.openNextImg()
+        self.openNextImg(check_label = False)
 
     def importDirImages(self, dirpath, pattern=None, load=True):
         self.actions.openNextImg.setEnabled(True)
@@ -2116,7 +2168,7 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 item.setCheckState(Qt.Unchecked)
             self.fileListWidget.addItem(item)
-        self.openNextImg(load=load)
+        self.openNextImg(check_label = False, load=load)
 
     def scanAllImages(self, folderPath):
         extensions = [

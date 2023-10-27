@@ -97,6 +97,9 @@ class Canvas(QtWidgets.QWidget):
         self._cursor = CURSOR_DEFAULT
         self.mouse = ''
         self.ctrl_press = False
+        self.alt_press = False
+        self.shift_press = False
+        self.show_text_value = True
         # Menus:
         # 0: right-click without selection and dragging of shapes
         # 1: right-click with selection and dragging of shapes
@@ -673,23 +676,31 @@ class Canvas(QtWidgets.QWidget):
             )
 
         Shape.scale = self.scale
-        for j, shape in enumerate(self.shapes):
-            if (shape.selected or not self._hideBackround) and self.isVisible(
-                shape
-            ):
-                shape.fill = shape.selected or shape == self.hShape
-                shape.paint(p, j)
+        if len(self.shapes) == 1:
+            shape = self.shapes[0]
+            if 'entrance' in shape.label:
+                shape.shape_type = "circle"        
+                shape.im_size = self.im_size
+                shape.paint(p,0,draw_Slot=False, show_text = False)
 
-        all_shapes = self.form_all_shapes()
+        all_shapes = self.form_all_shapes()        
         for j in range(len(all_shapes)):
             slot = all_shapes[j]
             self.current_shape = Shape(shape_type='polygon')
             for i, shape in enumerate(slot):
+                if 'stoppoint' in shape.label:
+                    continue
                 self.current_shape.addPoint(shape[0])
             self.current_shape._closed = True
-            self.current_shape.paint(p,j, True)
-            # print(j, self.current_shape.points)
-
+            self.current_shape.paint(p,j, draw_Slot=True)
+            
+        for j, shape in enumerate(self.shapes):
+            shape.shape_type = 'point'
+            if (shape.selected or not self._hideBackround) and self.isVisible(
+                shape
+            ):
+                shape.fill = shape.selected or shape == self.hShape
+                shape.paint(p, j, draw_Slot=False, show_text=self.show_text_value)
 
         if self.current:
             self.current.paint(p)
@@ -755,6 +766,7 @@ class Canvas(QtWidgets.QWidget):
             self.current = None
             self.setHiding(False)
             self.newShape.emit()
+            
             self.update()
             self.just_undo = False
 
@@ -881,8 +893,11 @@ class Canvas(QtWidgets.QWidget):
                 self.finalise(True)
             elif modifiers == QtCore.Qt.AltModifier:
                 self.snapping = False
+                self.alt_press = True
             elif modifiers == QtCore.Qt.ControlModifier:
                 self.ctrl_press = True
+            elif modifiers == QtCore.Qt.ShiftModifier:
+                self.shift_press = True
         elif self.editing():
             if key == QtCore.Qt.Key_Up:
                 self.moveByKeyboard(QtCore.QPointF(0.0, -MOVE_SPEED))
@@ -899,6 +914,8 @@ class Canvas(QtWidgets.QWidget):
             if int(modifiers) == 0:
                 self.snapping = True
                 self.ctrl_press = False
+                self.shift_press = False
+                self.alt_press = False
         elif self.editing():
             if self.movingShape and self.selectedShapes:
                 index = self.shapes.index(self.selectedShapes[0])

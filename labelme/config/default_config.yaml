@@ -1,13 +1,13 @@
 auto_save: true
 display_label_popup: true
 store_data: false
-keep_prev: true
+keep_prev: false
 keep_prev_scale: false
 keep_prev_brightness: false
 keep_prev_contrast: false
 logger_level: info
 
-flags: null
+flags: ["hard_im"]
 label_flags: null
 labels: null
 file_search: null
@@ -21,19 +21,28 @@ label_colors: null
 
 label_colors:
   entrance: [255,0,0]
-  endpoint: [255,0,255]
-  middlepoint: [0,255,255]
+  endpoint: [0,255,0]
+  second_entrance: [0,0,255]
+  stoppoint: [255,255,0]
+  intermediate: [0,255,255]
   inv_entrance: [0,0,0]
   inv_endpoint: [0,0,0]
-  inv_middlepoint: [0,0,0]
+  inv_second_entrance: [0,0,0]
+  inv_stoppoint: [0,0,0]
+  inv_intermediate: [0,0,0]
+
 
 mouse:
   left_mouse: 'entrance'
   right_mouse: 'endpoint'
-  middle_mouse: 'middlepoint'
+  middle_mouse: 'second_entrance'
+  shift_left_mouse: 'stoppoint'
+  alt_left_mouse: 'intermediate'
   ctrl_left_mouse: 'inv_entrance'
   ctrl_right_mouse: 'inv_endpoint'
-  ctrl_middle_mouse: 'inv_middlepoint'
+  ctrl_middle_mouse: 'inv_second_entrance'
+  shift_right_mouse: 'inv_stoppoint'
+  alt_right_mouse: 'inv_intermediate'
   
 
 shape:
@@ -103,8 +112,8 @@ shortcuts:
   save_to: null
   delete_file: Ctrl+Delete
 
-  open_next: [N, Ctrl+Shift+D]
-  open_prev: [B, Ctrl+Shift+A]
+  open_next: [D, Ctrl+Shift+D]
+  open_prev: [A, Ctrl+Shift+A]
 
   zoom_in: [Ctrl++, Ctrl+=]
   zoom_out: Ctrl+-
@@ -129,3 +138,4 @@ shortcuts:
   edit_label: Ctrl+E
   toggle_keep_prev_mode: Ctrl+P
   remove_selected_point: [Meta+H, Backspace]
+  show_text: space
