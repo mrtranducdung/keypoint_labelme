@@ -62,8 +62,7 @@ class Shape(object):
         self.shape_type = shape_type
         self.flags = flags
         self.description = description
-        self.other_data = {}
-        self.ratio = [140/1620, 140/1280]        
+        self.other_data = {}               
         self.im_size = None
 
         self._highlightIndex = None
@@ -184,7 +183,7 @@ class Shape(object):
                     self.drawVertex(vrtx_path, i)
             elif self.shape_type == "circle":
                 center_x,center_y = int(self.points[0].x()), int(self.points[0].y())               
-                radius = self.ratio[0]*self.im_size.width()
+                radius = self.ratio*self.im_size.height()
                 pen = QtGui.QPen(QtGui.QColor(255, 0, 255, 200))
                 pen.setWidth(1)
                 painter.setPen(pen)
