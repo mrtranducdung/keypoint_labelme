@@ -33,9 +33,9 @@ label_colors:
 
 
 mouse:
-  left_mouse: 'entrance'
+  left_mouse: 'second_entrance'
   right_mouse: 'endpoint'
-  middle_mouse: 'second_entrance'
+  middle_mouse: 'entrance'
   shift_left_mouse: 'stoppoint'
   alt_left_mouse: 'intermediate'
   ctrl_left_mouse: 'inv_entrance'

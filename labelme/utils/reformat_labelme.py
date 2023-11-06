@@ -54,6 +54,32 @@ def verify_entrance(points: List[dict], img_p):
         # raise Exception(f"Missing left entrance (or intermediate) point. (img_p: {img_p})")
     return is_valid
 
+def verify_entrance_only_second_entrance(points: List[dict], img_p):
+    '''verify if at least one of entrance, second-entrance or intermediate exist'''
+    is_valid = True
+    found_right = False
+    for i in range(1):
+        cur_label, _, _ = decode_point_data(points[i])
+        if cur_label in ['second_entrance']:
+            found_right=True
+            break
+    if not found_right:
+        is_valid = False
+        print(f"Missing right entrance (or intermediate) point. (img_p: {img_p})")
+        # raise Exception(f"Missing right entrance (or intermediate) point. (img_p: {img_p})")
+
+    found_left = False
+    for i in range(3):
+        cur_label, _, _ = decode_point_data(points[-1-i])
+        if cur_label in ['second_entrance']:
+            found_left=True
+            break
+    if not found_left:
+        is_valid = False
+        print(f"Missing left entrance (or intermediate) point. (img_p: {img_p})")
+        # raise Exception(f"Missing left entrance (or intermediate) point. (img_p: {img_p})")
+    return is_valid
+
 def verify_endpoint(points: List[dict], img_p: str):
     '''verify if 2 endpoints exist as a consecutive pair'''
     is_valid = True
@@ -122,7 +148,7 @@ def verify_intermediate(points: List[dict], img_p: str):
 
     return is_valid
 
-def verify_points(points: List[dict], img_p: str):
+def verify_points_old(points: List[dict], img_p: str):
     '''verify if annotated data is in correct format.'''
     r1 = verify_entrance(points, img_p)
     if r1:
@@ -138,6 +164,12 @@ def verify_points(points: List[dict], img_p: str):
             return False
     else:
         return False
+    
+def verify_points(points: List[dict], img_p: str):
+    '''verify if annotated data is in correct format.'''
+    r1 = verify_entrance_only_second_entrance(points, img_p)
+    return r1
+
 
 def make_keypoint_list(points: List[dict]) -> List['KeyPoint']:
 
