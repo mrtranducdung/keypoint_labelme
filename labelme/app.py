@@ -882,9 +882,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self._config["auto_save"] or self.actions.saveAuto.isChecked():            
             label_file = osp.splitext(self.imagePath)[0] + ".json"
-            if self.output_dir:
-                label_file_without_path = osp.basename(label_file)
-                label_file = osp.join(self.output_dir, label_file_without_path)
+            label_file = label_file.replace(self.lastOpenDir, self._config['label_dir']) 
+            # if self.output_dir:
+            #     label_file_without_path = osp.basename(label_file)
+            #     label_file = osp.join(self.output_dir, label_file_without_path)
             self.saveLabels(label_file)
             return
         self.dirty = True
@@ -1576,16 +1577,17 @@ class MainWindow(QtWidgets.QMainWindow):
         # assumes same name, but json extension
         self.status(
             str(self.tr("Loading %s...")) % osp.basename(str(filename))
-        )
+        ) 
         label_file = osp.splitext(filename)[0] + ".json"
-        if self.output_dir:
-            label_file_without_path = osp.basename(label_file)
-            label_file = osp.join(self.output_dir, label_file_without_path)
+        label_file = label_file.replace(self.lastOpenDir, self._config['label_dir'])  
+        # if self.output_dir:
+        #     label_file_without_path = osp.basename(label_file)
+        #     label_file = osp.join(self.output_dir, label_file_without_path)
         if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(
             label_file
         ):
             try:
-                self.labelFile = LabelFile(label_file)
+                self.labelFile = LabelFile(label_file, filename)
             except LabelFileError as e:
                 self.errorMessage(
                     self.tr("Error opening file"),
@@ -1598,10 +1600,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.status(self.tr("Error reading %s") % label_file)
                 return False
             self.imageData = self.labelFile.imageData
-            self.imagePath = osp.join(
-                osp.dirname(label_file),
-                self.labelFile.imagePath,
-            )
+            self.imagePath = filename
+            # self.imagePath = osp.join(
+            #     osp.dirname(label_file),
+            #     self.labelFile.imagePath,
+            # )
             self.otherData = self.labelFile.otherData
         else:
             self.imageData = LabelFile.load_image_file(filename)

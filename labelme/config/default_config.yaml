@@ -1,3 +1,4 @@
+label_dir: '/home/trd2yh/keypoint_labelme/labels'
 auto_save: true
 display_label_popup: true
 store_data: false
