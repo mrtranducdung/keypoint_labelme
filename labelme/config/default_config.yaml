@@ -1,4 +1,6 @@
-label_dir: '/home/trd2yh/keypoint_labelme/labels'
+label_dir: 'labels'
+image_dir: 'images'
+
 auto_save: true
 display_label_popup: true
 store_data: false

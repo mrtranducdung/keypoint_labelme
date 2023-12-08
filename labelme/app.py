@@ -109,7 +109,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
 
         self.labelList = LabelListWidget()
-        self.lastOpenDir = None
+        self.lastOpenDir = self._config["image_dir"]        
 
         self.flag_dock = self.flag_widget = None
         self.flag_dock = QtWidgets.QDockWidget(self.tr("Flags"), self)
@@ -835,6 +835,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.firstStart = True
         # if self.firstStart:
         #    QWhatsThis.enterWhatsThisMode()
+        self.importDirImages(self._config["image_dir"])
 
     def menu(self, title, actions=None):
         menu = self.menuBar().addMenu(title)
