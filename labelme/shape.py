@@ -242,9 +242,7 @@ class Shape(object):
             self._vertex_fill_color = self.hvertex_fill_color
         else:
             self._vertex_fill_color = self.vertex_fill_color
-        if shape == self.P_SQUARE:
-            path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
-        elif shape == self.P_ROUND:
+        if shape == self.P_SQUARE or shape == self.P_ROUND:
             if linesize == 'big':
                 path.addEllipse(point, (d / 2.0) + 5, (d / 2.0) + 5)
             elif linesize == 'small':
